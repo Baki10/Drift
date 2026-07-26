@@ -1,126 +1,126 @@
 #![allow(non_snake_case)]
 
-use clap::{Parser};
-use colored::*;
-use std::{fs::{self, DirEntry}, vec};
+use std::io;
 
-#[derive(Parser, Debug)]
-#[command(name="Drift")]
-#[command(version, about, long_about = None)]
-struct Args {
-    #[arg(short, long)]
-    filename: String,
-
-    #[arg(short, long, default_value_t = String::from("."))]
-    path: String,
-
-    #[arg(short, long, default_value_t = true)]
-    ignorecase: bool,
-
-    #[arg(short, long, default_value_t = 1)]
-    count: u8
-}
+use ratatui::{Terminal, backend::CrosstermBackend, crossterm::{event::{self, Event, KeyCode, KeyEventKind}, terminal::enable_raw_mode}, style::Stylize, widgets::{Block, Paragraph}};
 
 
+use Drift::utils;
+
+fn main() -> Result<(), io::Error> {
+    //let args = Args::parse();
+    //find_file("", String::from(""), true);
+
+    enable_raw_mode()?;
+    let stdio = io::stdout();
+    let backend = CrosstermBackend::new(stdio);
+    let mut terminal = Terminal::new(backend)?;
+
+    let block = Block::bordered()
+            .title("Directory Tree".bold())
+            .title_alignment(ratatui::layout::HorizontalAlignment::Center)
+            .border_style(ratatui::style::Color::Blue)
+            .bg(ratatui::style::Color::Black);
+
+    let mut current_path: &str = "C:\\";
+
+    //let file_paths: Vec<String> = utils::find_file_paths("C:\\Users", String::from("main.rs"), true);
+    let mut file_paths: Vec<String> = utils::scan_directory(current_path)?;
+    let line_number = file_paths.len();
 
 
-fn main() {
-    let args = Args::parse();
+    let mut lines: Vec<ratatui::text::Line>;
+    let mut paragraph;
 
-    let mut path_list: Vec<String> = vec![];
+    let mut change_path: bool = false;
+    let mut cursor: u16 = 0;
+    let mut offset: u16 = 0;
+    let mut block_height: u16 = 0;
 
-    let _result = scan_directory(args.path.as_str(), &mut path_list);
-    
-
-    let mut match_list: Vec<String> = vec![];
-    let mut regex: Vec<String> = vec![];
-    let filter_results = filter_matches(&path_list, &args.filename, args.ignorecase);
-
-    for result in filter_results {
-        match_list.push(path_list[result.0].clone());
-        regex.push(result.1);
-    }
-
-    print_results(&regex, &match_list);
-
-}
-
-
-fn filter_matches(list_reference: &Vec<String>, filter_reference: &String, ignoreCase: bool) -> Vec<(usize, String)> {
-
-    let list = list_reference.clone();
-    let mut modifed_list: Vec<String> = Vec::new();
-    let mut output: Vec<(usize, String)> = Vec::new();
-    let filter: String;
-
-    if ignoreCase {
-        for i in 0..list.len() {
-            modifed_list.push(list[i].to_lowercase());
+    loop {
+        
+        if change_path {
+            current_path = file_paths[cursor as usize].as_str();
+            file_paths = utils::scan_directory(current_path)?;
+            cursor = 0;
+            offset = 0;
+            change_path = false;
         }
-        filter = filter_reference.clone().to_lowercase();
-    } else {
-        filter = filter_reference.clone();
-    }
 
-    for index in 0..list.len() {
-        if modifed_list[index].contains(&filter) {
-            let regex_index = modifed_list[index].find(&filter).unwrap();
-            let regex = &list[index][regex_index..regex_index+filter.len()];
-            output.push((index, regex.to_string()));
+        lines = file_paths.
+        iter().
+        enumerate().
+        map(|(index, string)| {
+            if index == cursor as usize {
+                ratatui::text::Line::from(string.clone()).bg(ratatui::style::Color::Blue).fg(ratatui::style::Color::Black)
+            } else {
+                ratatui::text::Line::from(string.clone())
+            }
+        }).collect();
+        paragraph = Paragraph::new(lines);
+
+        terminal.draw(|f| {
+
+            f.render_widget(block.clone(), f.area());
+
+            let inside_block = block.inner(f.area());
+
+            block_height = f.area().height;
+
+            f.render_widget(paragraph.clone().scroll((offset, 0)), inside_block);
+
+        })?;
+
+        if key_events(&mut offset, &(line_number as u16), &block_height, &mut cursor, &mut change_path)? {
+            break;
         }
     }
 
-    return output;
+    terminal.clear()?;
+    ratatui::restore();
+    Ok(())
 }
 
 
-fn print_results(regex: &Vec<String>, match_list: &Vec<String>) {
-    print!("\n\n\n");
+fn key_events(offset: &mut u16, line_number: &u16, block_height: &u16, cursor: &mut u16, change_path: &mut bool) -> Result<bool, io::Error> {
 
-    let mut output: String = String::new();
-    for index in 0..match_list.len() {
-        let mut line: String = String::new();
+    let mut should_break = false;
+    if let Event::Key(key) = event::read()? {
+            
+            if key.kind == KeyEventKind::Press {
 
-        let splits_list: Vec<&str> = match_list[index].split(&regex[index]).collect();
-        for i in 0..splits_list.len()-1 {
-            line.push_str(format!("{}{}", splits_list[i], regex[index].bright_blue()).as_str());
+                match key.code {
+                    KeyCode::Down => {
+
+                        if *line_number+3 > *block_height {
+                            if *offset < line_number - block_height + 3 {
+                                *offset += 1;
+                            }
+                        }
+
+                        if *cursor < *line_number-1 {
+                            *cursor += 1;
+                        }
+                    }
+                    KeyCode::Up => {
+                        if *offset > 0 {
+                            *offset -= 1;
+                        }
+                        if *cursor > 0 {
+                            *cursor -= 1;
+                        }
+                    }
+                    KeyCode::Enter => {
+                        *change_path = true;
+                    }
+                    KeyCode::Esc => {
+                        should_break = true;
+                    }
+                    _ => {}
+                }
+
+            }
+
         }
-        line.push_str(splits_list[splits_list.len()-1]);
-
-        output.push_str(&line);
-        output.push('\n');
-    }
-    print!("{}\n\n\n", output);
-}
-
-fn scan_directory(path: &str, paths: &mut Vec<String>) -> std::io::Result<()> {
-
-    let mut result: Result<(), std::io::Error> = Ok(());
-    let fileList = fs::read_dir(path)?;
-    for entry in fileList {
-        let entry = entry?;
-
-        let intermidate = entry.path();
-        let path_option = intermidate.to_str();
-
-        match path_option {
-            Some(entry_path) => result = search_path(entry, entry_path, paths),
-            None => return Ok(()),
-        };
-
-    }
-
-    return result;
-}
-
-fn search_path(entry: DirEntry, entry_path: &str, paths: &mut Vec<String>) -> std::io::Result<()> {
-
-    let fileType = entry.file_type()?;
-    let mut result: Result<(), std::io::Error> = Ok(());
-    if fileType.is_dir() {
-        result = scan_directory(entry_path, paths);
-    }
-    paths.push(entry_path.to_string());
-
-    return result;
+    Ok(should_break)
 }
