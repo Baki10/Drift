@@ -46,7 +46,7 @@ pub mod utils {
         return filtered_list;
     }
 
-    pub fn scan_directory(path: &str) -> Result<Vec<String>, io::Error> {
+    pub fn scan_directory(path: &String) -> Result<Vec<String>, io::Error> {
         let mut paths: Vec<String> = Vec::new();
 
         let fileList = fs::read_dir(path)?;
