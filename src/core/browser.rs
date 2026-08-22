@@ -1,4 +1,4 @@
-use std::io;
+use std::{fs, io};
 
 use crate::utils;
 
@@ -100,4 +100,8 @@ impl Browser {
         }
     }
 
+    pub fn get_entry_data(&self) -> Result<fs::Metadata, io::Error> {
+        let data = std::fs::metadata(self.file_entries[self.cursor as usize].clone());
+        return data;
+    }
 }

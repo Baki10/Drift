@@ -9,7 +9,7 @@ use ratatui::{Terminal,
     widgets::{Block, Paragraph}};
 
 mod core;
-use Drift::utils;
+use Drift::utils::{self, convert_file_size};
 use crate::core::browser::Browser;
 
 
@@ -32,7 +32,12 @@ fn main() -> Result<(), io::Error> {
 
     loop {
 
-        let block = b.clone().title_bottom(browser.path.clone().fg(ratatui::style::Color::White).bold());
+        let file_metadata: std::fs::Metadata = browser.get_entry_data()?;
+        let file_info: String = convert_file_size(file_metadata.len());
+        //file_info.push_str(file_metadata.file_type().);
+
+        let mut  block = b.clone().title_bottom(browser.path.clone().fg(ratatui::style::Color::White).bold());
+        block = block.title_bottom(ratatui::text::Line::from(file_info).left_aligned().fg(ratatui::style::Color::White).bold());
 
         lines = browser.file_entries.
         iter().
@@ -49,6 +54,7 @@ fn main() -> Result<(), io::Error> {
             }
         }).collect();
         paragraph = Paragraph::new(lines);
+
 
         terminal.draw(|f| {
 
