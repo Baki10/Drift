@@ -5,6 +5,8 @@
 pub mod utils {
     use std::{fs, io};
 
+    static FILE_SIZES: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+
     pub fn vec_to_string(vec: &Vec<String>) -> String {
         let mut string: String = String::new();
 
@@ -46,7 +48,7 @@ pub mod utils {
         return filtered_list;
     }
 
-    pub fn scan_directory(path: &str) -> Result<Vec<String>, io::Error> {
+    pub fn scan_directory(path: &String) -> Result<Vec<String>, io::Error> {
         let mut paths: Vec<String> = Vec::new();
 
         let fileList = fs::read_dir(path)?;
@@ -95,5 +97,23 @@ pub mod utils {
 
         
         Ok(paths)
+    }
+
+    pub fn convert_file_size(byte_size: u64) -> String {
+        
+        let output: String;
+        let mut size_output: f32 = byte_size as f32;
+        let mut size_index: usize = 0;
+
+        while size_output >= 1024.0 {
+            if size_index < 4 {
+                size_output = size_output/1024.0;
+                size_index += 1;
+            } else {
+                break;
+            }
+        }
+        output = format!("{}{}", size_output, FILE_SIZES[size_index]);
+        return output;
     }
 }
