@@ -2,11 +2,7 @@
 
 use std::{io, panic};
 
-use ratatui::{Terminal, 
-    backend::CrosstermBackend, 
-    crossterm::{event::{self, Event, KeyCode, KeyEventKind}, terminal::enable_raw_mode}, 
-    style::Stylize, 
-    widgets::{Block, Paragraph}};
+use ratatui::{Terminal, backend::CrosstermBackend, crossterm::{event::{self, Event, KeyCode, KeyEventKind}, terminal::enable_raw_mode}, layout::Constraint, style::Stylize, widgets::{Block, Paragraph, Widget}};
 
 mod core;
 use Drift::utils::{self, convert_file_size};
@@ -36,7 +32,7 @@ fn main() -> Result<(), io::Error> {
         let file_info: String = convert_file_size(file_metadata.len());
         //file_info.push_str(file_metadata.file_type().);
 
-        let mut  block = b.clone().title_bottom(browser.path.clone().fg(ratatui::style::Color::White).bold());
+        let mut block = b.clone().title_bottom(browser.path.clone().fg(ratatui::style::Color::White).bold());
         block = block.title_bottom(ratatui::text::Line::from(file_info).left_aligned().fg(ratatui::style::Color::White).bold());
 
         lines = browser.file_entries.
@@ -54,7 +50,7 @@ fn main() -> Result<(), io::Error> {
             }
         }).collect();
         paragraph = Paragraph::new(lines);
-
+        paragraph = paragraph.scroll((browser.offset, 0));
 
         terminal.draw(|f| {
 
@@ -63,7 +59,7 @@ fn main() -> Result<(), io::Error> {
             let inside_block = block.inner(f.area());
             block_height = f.area().height;
 
-            f.render_widget(paragraph.clone().scroll((browser.offset, 0)), inside_block);
+            f.render_widget(paragraph, inside_block);
 
         })?;
 
@@ -108,6 +104,18 @@ fn key_events(browser: &mut Browser, block_height: &u16) -> Result<bool, io::Err
 
         }
     Ok(should_break)
+}
+
+fn _popup_window<T: Widget>(frame: &mut ratatui::Frame<'_>, window_title: String, horizontal_percent: u16, vertical_percent: u16, widget: T) {
+    let popup_area = frame.area().centered(
+        Constraint::Percentage(horizontal_percent),
+        Constraint::Percentage(vertical_percent));
+
+    let popup_block = Block::bordered().title(window_title);
+    let inner_area = popup_block.inner(popup_area);
+
+    frame.render_widget(popup_block, popup_area);
+    frame.render_widget(widget, inner_area);
 }
 
 fn init_terminal() -> Terminal<CrosstermBackend<io::Stdout>> {
