@@ -1,12 +1,13 @@
 use std::{fs, io};
+use ratatui::style::Stylize;
 
 use crate::utils;
 
 pub struct Browser {
-    pub path: String,
-    pub cursor: u16,
-    pub offset: u16,
-    pub file_entries: Vec<String>,
+    path: String,
+    cursor: u16,
+    offset: u16,
+    file_entries: Vec<String>,
 }
 
 impl Browser {
@@ -98,6 +99,35 @@ impl Browser {
         if self.cursor > 0 {
             self.cursor -= 1;
         }
+    }
+
+    pub fn generate_lines(&mut self) -> Vec<ratatui::text::Line<'static>> {
+
+        let mut lines = Vec::new();
+        for (index, string) in self.file_entries.iter().enumerate() {
+            
+            let mut output = string.clone();
+            output.replace_range(0..self.path.len(), "");
+
+            if output.starts_with("\\") {
+                output.replace_range(0..1, "");
+            }
+
+            if index == self.cursor as usize {
+                lines.push(ratatui::text::Line::from(output).bg(ratatui::style::Color::Blue).fg(ratatui::style::Color::White));
+            } else {
+                lines.push(ratatui::text::Line::from(output));
+            }
+        }
+        return lines;
+    }
+
+    pub fn get_path(&self) -> String {
+        self.path.clone()
+    }
+
+    pub fn get_offset(&self) -> u16 {
+        self.offset.clone()
     }
 
     pub fn get_entry_data(&self) -> Result<fs::Metadata, io::Error> {

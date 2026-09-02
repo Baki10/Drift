@@ -9,19 +9,21 @@ use Drift::utils::{self, convert_file_size};
 use crate::core::browser::Browser;
 
 
+// #------------------------------------------#
+// | NOTE: Panic when opening an empty folder |
+// #------------------------------------------#
+
+
 fn main() -> Result<(), io::Error> {
 
     enable_raw_mode()?;
     let mut terminal  = init_terminal();
 
-    let b = Block::bordered()
+    let block_style = Block::bordered()
             .title("Browser".fg(ratatui::style::Color::White).bold())
             .title_alignment(ratatui::layout::HorizontalAlignment::Center)
             .border_style(ratatui::style::Color::Blue)
             .bg(ratatui::style::Color::Black);
-
-    let mut lines: Vec<ratatui::text::Line>;
-    let mut paragraph;
 
     let mut block_height: u16 = 0;
     let mut browser: Browser = Browser::new(String::from("C:\\"))?;
@@ -30,36 +32,22 @@ fn main() -> Result<(), io::Error> {
 
         let file_metadata: std::fs::Metadata = browser.get_entry_data()?;
         let file_info: String = convert_file_size(file_metadata.len());
-        //file_info.push_str(file_metadata.file_type().);
-
-        let mut block = b.clone().title_bottom(browser.path.clone().fg(ratatui::style::Color::White).bold());
+        
+        let mut block = block_style.clone().title_bottom(browser.get_path().fg(ratatui::style::Color::White).bold());
         block = block.title_bottom(ratatui::text::Line::from(file_info).left_aligned().fg(ratatui::style::Color::White).bold());
 
-        lines = browser.file_entries.
-        iter().
-        enumerate().
-        map(|(index, string)| {
+        let lines: Vec<ratatui::text::Line> = browser.generate_lines();
 
-            let mut output = string.clone();
-            output.replace_range(0..browser.path.len(), "");
+        let mut paragraph = Paragraph::new(lines);
+        paragraph = paragraph.scroll((browser.get_offset(), 0));
 
-            if index == browser.cursor as usize {
-                ratatui::text::Line::from(output.clone()).bg(ratatui::style::Color::Blue).fg(ratatui::style::Color::White)
-            } else {
-                ratatui::text::Line::from(output.clone())
-            }
-        }).collect();
-        paragraph = Paragraph::new(lines);
-        paragraph = paragraph.scroll((browser.offset, 0));
+        terminal.draw(|frame| {
 
-        terminal.draw(|f| {
+            let inside_block = block.inner(frame.area());
+            block_height = frame.area().height;
 
-            f.render_widget(block.clone(), f.area());
-
-            let inside_block = block.inner(f.area());
-            block_height = f.area().height;
-
-            f.render_widget(paragraph, inside_block);
+            frame.render_widget(block.clone(), frame.area());
+            frame.render_widget(paragraph, inside_block);
 
         })?;
 
