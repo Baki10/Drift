@@ -1,6 +1,12 @@
 #![allow(non_snake_case)]
 
-
+pub mod Colors {
+    use ratatui::style::Color;
+    pub const BACKGROUND: Color = Color::Rgb(10, 10, 40);
+    pub const FOREGROUND_1: Color = Color::Rgb(255, 215, 88);
+    pub const FOREGROUND_2: Color = Color::Rgb(51, 104, 160);
+    pub const CURSOR: Color = Color::Rgb(50, 50, 200);
+}
 
 pub mod utils {
     use std::{fs, io};

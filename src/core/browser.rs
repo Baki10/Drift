@@ -2,6 +2,7 @@ use std::{fs, io};
 use ratatui::style::Stylize;
 
 use crate::utils;
+use crate::Colors;
 
 pub struct Browser {
     path: String,
@@ -34,6 +35,7 @@ impl Browser {
 
     pub fn enter_directory(&mut self) {
 
+        if self.file_entries.len() == 0 {return;}
         let try_scan = utils::scan_directory(&self.file_entries[self.cursor as usize]);
 
         match try_scan {
@@ -80,6 +82,7 @@ impl Browser {
     pub fn move_down(&mut self, block_height: &u16) {
 
         let line_number: u16 = self.file_entries.len() as u16;
+        if line_number == 0 {return;}
 
         if line_number+3 > *block_height {
             if self.offset < line_number - block_height + 3 {
@@ -114,8 +117,10 @@ impl Browser {
             }
 
             if index == self.cursor as usize {
-                lines.push(ratatui::text::Line::from(output).bg(ratatui::style::Color::Blue).fg(ratatui::style::Color::White));
+                output.insert_str(0," ->");
+                lines.push(ratatui::text::Line::from(output).bg(Colors::CURSOR).fg(ratatui::style::Color::White));
             } else {
+                output.insert_str(0,"   ");
                 lines.push(ratatui::text::Line::from(output));
             }
         }
@@ -130,8 +135,28 @@ impl Browser {
         self.offset.clone()
     }
 
-    pub fn get_entry_data(&self) -> Result<fs::Metadata, io::Error> {
-        let data = std::fs::metadata(self.file_entries[self.cursor as usize].clone());
+    fn get_entry_data(&self) -> Option<fs::Metadata> {
+        let data: Option<fs::Metadata>;
+        if self.file_entries.len() == 0 {
+            data = None;
+        } else {
+            
+            match std::fs::metadata(self.file_entries[self.cursor as usize].clone()) {
+                Ok(metadata) => data = Some(metadata),
+                Err(error) => panic!("{}", error)
+            }
+
+        }
         return data;
     }
+
+    pub fn get_entry_size_string(&self) -> String {
+        match self.get_entry_data() {
+            Some(file_metadata) => {
+                return utils::convert_file_size(file_metadata.len());
+            },
+            None => return String::from("0B"),
+        }
+    }
+
 }

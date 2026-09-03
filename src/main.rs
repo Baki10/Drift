@@ -2,44 +2,47 @@
 
 use std::{io, panic};
 
-use ratatui::{Terminal, backend::CrosstermBackend, crossterm::{event::{self, Event, KeyCode, KeyEventKind}, terminal::enable_raw_mode}, layout::Constraint, style::Stylize, widgets::{Block, Paragraph, Widget}};
+use ratatui::backend::CrosstermBackend;
+use ratatui::crossterm::{self, event};
+use ratatui::layout::Constraint;
+use ratatui::style::Stylize;
+use ratatui::widgets::{self, Block, Paragraph, Widget};
+use ratatui::text::Line;
 
 mod core;
-use Drift::utils::{self, convert_file_size};
+use Drift::Colors;
+use Drift::utils;
 use crate::core::browser::Browser;
-
-
-// #------------------------------------------#
-// | NOTE: Panic when opening an empty folder |
-// #------------------------------------------#
-
 
 fn main() -> Result<(), io::Error> {
 
-    enable_raw_mode()?;
+    crossterm::terminal::enable_raw_mode()?;
     let mut terminal  = init_terminal();
 
     let block_style = Block::bordered()
-            .title("Browser".fg(ratatui::style::Color::White).bold())
+            .title("Browser".fg(Colors::FOREGROUND_1).bold())
             .title_alignment(ratatui::layout::HorizontalAlignment::Center)
-            .border_style(ratatui::style::Color::Blue)
-            .bg(ratatui::style::Color::Black);
+            .border_style(Colors::FOREGROUND_2)
+            .border_type(widgets::BorderType::Rounded)
+            .bg(Colors::BACKGROUND);
 
     let mut block_height: u16 = 0;
-    let mut browser: Browser = Browser::new(String::from("C:\\"))?;
+    let mut browser: Browser = Browser::new(String::from("C:\\Users\\Branko\\Desktop"))?;
+
 
     loop {
+ 
+        let file_info: String = browser.get_entry_size_string();
+        let file_info_title = Line::from(file_info).left_aligned().fg(Colors::FOREGROUND_1).bold();
+        let path_title = browser.get_path().fg(Colors::FOREGROUND_1).bold();
 
-        let file_metadata: std::fs::Metadata = browser.get_entry_data()?;
-        let file_info: String = convert_file_size(file_metadata.len());
-        
-        let mut block = block_style.clone().title_bottom(browser.get_path().fg(ratatui::style::Color::White).bold());
-        block = block.title_bottom(ratatui::text::Line::from(file_info).left_aligned().fg(ratatui::style::Color::White).bold());
+        let mut block = block_style.clone().title_bottom(path_title);
+        block = block.title_bottom(file_info_title);
 
-        let lines: Vec<ratatui::text::Line> = browser.generate_lines();
-
+        let lines = browser.generate_lines();
         let mut paragraph = Paragraph::new(lines);
         paragraph = paragraph.scroll((browser.get_offset(), 0));
+
 
         terminal.draw(|frame| {
 
@@ -62,27 +65,30 @@ fn main() -> Result<(), io::Error> {
     Ok(())
 }
 
+
+
+
 fn key_events(browser: &mut Browser, block_height: &u16) -> Result<bool, io::Error> {
 
     let mut should_break = false;
 
-    if let Event::Key(key) = event::read()? {
-            if key.kind == KeyEventKind::Press {
+    if let event::Event::Key(key) = event::read()? {
+            if key.kind == event::KeyEventKind::Press {
 
                 match key.code {
-                    KeyCode::Down => {
+                    event::KeyCode::Down => {
                         browser.move_down(block_height);
                     }
-                    KeyCode::Up => {
+                    event::KeyCode::Up => {
                         browser.move_up();
                     }
-                    KeyCode::Right => {
+                    event::KeyCode::Right => {
                         browser.enter_directory();
                     }
-                    KeyCode::Left => {
+                    event::KeyCode::Left => {
                         browser.back_directory();
                     }
-                    KeyCode::Esc => {
+                    event::KeyCode::Esc => {
                         should_break = true;
                     }
                     _ => {}
@@ -106,10 +112,10 @@ fn _popup_window<T: Widget>(frame: &mut ratatui::Frame<'_>, window_title: String
     frame.render_widget(widget, inner_area);
 }
 
-fn init_terminal() -> Terminal<CrosstermBackend<io::Stdout>> {
+fn init_terminal() -> ratatui::Terminal<CrosstermBackend<io::Stdout>> {
     let stdio = io::stdout();
     let backend = CrosstermBackend::new(stdio);
-    let terminal = Terminal::new(backend);
+    let terminal = ratatui::Terminal::new(backend);
 
     match terminal {
         Ok(terminal) => terminal,
