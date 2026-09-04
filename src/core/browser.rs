@@ -3,6 +3,8 @@ use ratatui::style::Stylize;
 
 use crate::utils;
 use crate::Colors;
+use ratatui::text::Line;
+use ratatui::style::Color;
 
 pub struct Browser {
     path: String,
@@ -104,7 +106,7 @@ impl Browser {
         }
     }
 
-    pub fn generate_lines(&mut self) -> Vec<ratatui::text::Line<'static>> {
+    pub fn generate_lines(&mut self) -> Vec<Line<'static>> {
 
         let mut lines = Vec::new();
         for (index, string) in self.file_entries.iter().enumerate() {
@@ -118,10 +120,14 @@ impl Browser {
 
             if index == self.cursor as usize {
                 output.insert_str(0," ->");
-                lines.push(ratatui::text::Line::from(output).bg(Colors::CURSOR).fg(ratatui::style::Color::White));
+
+                if let Some(cursor) = Colors::CURSOR.get() {
+                    lines.push(Line::from(output).bg(*cursor).fg(Color::White));
+                }
+
             } else {
                 output.insert_str(0,"   ");
-                lines.push(ratatui::text::Line::from(output));
+                lines.push(Line::from(output));
             }
         }
         return lines;

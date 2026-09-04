@@ -8,6 +8,7 @@ use ratatui::layout::Constraint;
 use ratatui::style::Stylize;
 use ratatui::widgets::{self, Block, Paragraph, Widget};
 use ratatui::text::Line;
+use ratatui::style::Color;
 
 mod core;
 use Drift::Colors;
@@ -18,23 +19,27 @@ fn main() -> Result<(), io::Error> {
 
     crossterm::terminal::enable_raw_mode()?;
     let mut terminal  = init_terminal();
+    utils::init_config("C:\\Users\\Branko\\Documents\\Projects\\Drift\\src\\config".to_string())?;
+
+    let (BACKGROUND, FOREGROUND_1, FOREGROUND_2, _CURSOR) = init_constants()?;
 
     let block_style = Block::bordered()
-            .title("Browser".fg(Colors::FOREGROUND_1).bold())
+            .title("Browser".fg(FOREGROUND_1).bold())
             .title_alignment(ratatui::layout::HorizontalAlignment::Center)
-            .border_style(Colors::FOREGROUND_2)
+            .border_style(FOREGROUND_2)
             .border_type(widgets::BorderType::Rounded)
-            .bg(Colors::BACKGROUND);
+            .bg(BACKGROUND);
 
     let mut block_height: u16 = 0;
     let mut browser: Browser = Browser::new(String::from("C:\\Users\\Branko\\Desktop"))?;
 
 
+
     loop {
  
         let file_info: String = browser.get_entry_size_string();
-        let file_info_title = Line::from(file_info).left_aligned().fg(Colors::FOREGROUND_1).bold();
-        let path_title = browser.get_path().fg(Colors::FOREGROUND_1).bold();
+        let file_info_title = Line::from(file_info).left_aligned().fg(FOREGROUND_1).bold();
+        let path_title = browser.get_path().fg(FOREGROUND_1).bold();
 
         let mut block = block_style.clone().title_bottom(path_title);
         block = block.title_bottom(file_info_title);
@@ -110,6 +115,37 @@ fn _popup_window<T: Widget>(frame: &mut ratatui::Frame<'_>, window_title: String
 
     frame.render_widget(popup_block, popup_area);
     frame.render_widget(widget, inner_area);
+}
+
+fn init_constants() -> Result<(Color, Color, Color, Color), io::Error> {
+
+    let BACKGROUND: Color;
+    let FOREGROUND_1: Color;
+    let FOREGROUND_2: Color;
+    let CURSOR: Color;
+    
+    if let Some(background) = Colors::BACKGROUND.get() {
+        BACKGROUND = *background;
+    } else {
+        return Err(io::ErrorKind::InvalidData.into());
+    }
+    if let Some(foreground_1) = Colors::FOREGROUND_1.get() {
+        FOREGROUND_1 = *foreground_1;
+    } else {
+        return Err(io::ErrorKind::InvalidData.into());
+    }
+    if let Some(foreground_2) = Colors::FOREGROUND_2.get() {
+        FOREGROUND_2 = *foreground_2;
+    } else {
+        return Err(io::ErrorKind::InvalidData.into());
+    }
+    if let Some(cursor) = Colors::CURSOR.get() {
+        CURSOR = *cursor;
+    } else {
+        return Err(io::ErrorKind::InvalidData.into());
+    }
+
+    Ok((BACKGROUND, FOREGROUND_1, FOREGROUND_2, CURSOR))
 }
 
 fn init_terminal() -> ratatui::Terminal<CrosstermBackend<io::Stdout>> {
