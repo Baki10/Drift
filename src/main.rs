@@ -6,7 +6,7 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::{self, event};
 use ratatui::layout::Constraint;
 use ratatui::style::Stylize;
-use ratatui::widgets::{self, Block, Paragraph, Widget};
+use ratatui::widgets::{self, Block, Widget};
 use ratatui::text::Line;
 use ratatui::style::Color;
 
@@ -30,10 +30,7 @@ fn main() -> Result<(), io::Error> {
             .border_type(widgets::BorderType::Rounded)
             .bg(BACKGROUND);
 
-    let mut block_height: u16 = 0;
     let mut browser: Browser = Browser::new(String::from("C:\\Users\\Branko\\Desktop"))?;
-
-
 
     loop {
  
@@ -41,25 +38,22 @@ fn main() -> Result<(), io::Error> {
         let file_info_title = Line::from(file_info).left_aligned().fg(FOREGROUND_1).bold();
         let path_title = browser.get_path().fg(FOREGROUND_1).bold();
 
-        let mut block = block_style.clone().title_bottom(path_title);
-        block = block.title_bottom(file_info_title);
-
-        let lines = browser.generate_lines();
-        let mut paragraph = Paragraph::new(lines);
-        paragraph = paragraph.scroll((browser.get_offset(), 0));
-
+        let mut browser_block = block_style.clone().title_bottom(path_title);
+        browser_block = browser_block.title_bottom(file_info_title);
 
         terminal.draw(|frame| {
 
-            let inside_block = block.inner(frame.area());
-            block_height = frame.area().height;
+            let inside_block = browser_block.inner(frame.area());
 
-            frame.render_widget(block.clone(), frame.area());
-            frame.render_widget(paragraph, inside_block);
+            let list = browser.generate_list();
+            let mut list_state = browser.get_list_state();
+
+            frame.render_widget(browser_block.clone(), frame.area());
+            frame.render_stateful_widget(list, inside_block, &mut list_state);
 
         })?;
 
-        if key_events(&mut browser, &block_height)? {
+        if key_events(&mut browser)? {
             break;
         }
     }
@@ -70,10 +64,7 @@ fn main() -> Result<(), io::Error> {
     Ok(())
 }
 
-
-
-
-fn key_events(browser: &mut Browser, block_height: &u16) -> Result<bool, io::Error> {
+fn key_events(browser: &mut Browser) -> Result<bool, io::Error> {
 
     let mut should_break = false;
 
@@ -82,7 +73,7 @@ fn key_events(browser: &mut Browser, block_height: &u16) -> Result<bool, io::Err
 
                 match key.code {
                     event::KeyCode::Down => {
-                        browser.move_down(block_height);
+                        browser.move_down();
                     }
                     event::KeyCode::Up => {
                         browser.move_up();
